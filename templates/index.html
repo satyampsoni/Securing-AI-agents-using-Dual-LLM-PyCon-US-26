@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dual-LLM Security Demo</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div class="topbar-copy">
+          <p class="eyebrow">Dual-LLM Security Demo</p>
+          <h1>Bring your MCP server, pull real context, and quarantine it before agentic action.</h1>
+          <p class="lede">
+            Connect modern remote MCP servers for tools like Notion or your own Gmail connector, inspect live
+            resources or tool outputs, and send only sanitized findings from LLM1 into LLM2.
+          </p>
+        </div>
+        <div class="topbar-meta">
+          <span class="meta-pill">{{ run_mode|upper }} backend</span>
+          <span class="meta-pill">{% if allow_sensitive_tools %}Sensitive tools enabled{% else %}Sensitive tools blocked{% endif %}</span>
+        </div>
+      </section>
+
+      <section class="flow-strip">
+        <div class="flow-strip-head">
+          <div>
+            <p class="eyebrow">Pipeline</p>
+            <h2>Connector data crosses an explicit privilege boundary before the agent can act</h2>
+          </div>
+          <p class="flow-caption">Current MCP ecosystem defaults to remote HTTP, progressive discovery, and explicit human review on tools.</p>
+        </div>
+        <div class="flow-rail" id="flow-rail">
+          <article class="flow-node source">
+            <span class="node-icon">mcp</span>
+            <strong>Connector</strong>
+            <small>Remote MCP server</small>
+          </article>
+          <span class="flow-line"></span>
+          <article class="flow-node quarantine">
+            <span class="node-icon">1</span>
+            <strong id="flow-q-label">LLM1</strong>
+            <small id="flow-q-model">Quarantine scan</small>
+          </article>
+          <span class="flow-line"></span>
+          <article class="flow-node privileged">
+            <span class="node-icon">2</span>
+            <strong id="flow-p-label">LLM2</strong>
+            <small id="flow-p-model">Privileged reasoning</small>
+          </article>
+          <span class="flow-line"></span>
+          <article class="flow-node policy">
+            <span class="node-icon">P</span>
+            <strong>Policy</strong>
+            <small>Execution gate</small>
+          </article>
+          <span class="flow-line"></span>
+          <article class="flow-node output">
+            <span class="node-icon">ok</span>
+            <strong>Output</strong>
+            <small>Safe next step</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="side-rail">
+          <div class="rail-section">
+            <div class="rail-head">
+              <div>
+                <p class="eyebrow">Connectors</p>
+                <h3>MCP servers</h3>
+              </div>
+            </div>
+            <div class="connector-form">
+              <label>
+                <span>Preset</span>
+                <select id="connector-preset">
+                  <option value="custom">Custom MCP server</option>
+                  <option value="notion">Notion hosted MCP</option>
+                  <option value="gmail">Bring your Gmail MCP</option>
+                </select>
+              </label>
+              <label>
+                <span>Name</span>
+                <input id="connector-name" type="text" placeholder="Notion workspace" />
+              </label>
+              <label>
+                <span>Server URL</span>
+                <input id="connector-url" type="text" placeholder="https://mcp.example.com/mcp" />
+              </label>
+              <label>
+                <span>Auth mode</span>
+                <select id="connector-auth-mode">
+                  <option value="oauth">OAuth</option>
+                  <option value="none">None</option>
+                  <option value="bearer">Bearer token</option>
+                </select>
+              </label>
+              <label id="connector-token-wrap">
+                <span>Bearer token</span>
+                <input id="connector-token" type="password" placeholder="Optional access token" />
+              </label>
+              <div class="rail-actions">
+                <button id="connector-save" class="action-button primary" type="button">Save connector</button>
+                <button id="connector-refresh" class="action-button" type="button">Refresh snapshot</button>
+                <button id="connector-oauth" class="action-button" type="button">OAuth connect</button>
+                <button id="connector-delete" class="action-button subtle" type="button">Delete</button>
+              </div>
+            </div>
+            <div id="connector-list" class="connector-list"></div>
+          </div>
+
+          <div class="rail-section">
+            <div class="rail-head">
+              <div>
+                <p class="eyebrow">Seed Attacks</p>
+                <h3>Scenario library</h3>
+              </div>
+            </div>
+            <div class="scenario-list" id="scenario-grid"></div>
+          </div>
+        </aside>
+
+        <div class="studio">
+          <section class="studio-section">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Connector Browser</p>
+                <h3>Resources and tools from the selected MCP server</h3>
+              </div>
+              <p id="connector-status" class="inline-copy">Choose or connect an MCP server to browse live data.</p>
+            </div>
+            <div class="browser-grid">
+              <div class="browser-panel">
+                <div class="browser-head">
+                  <h4>Resources</h4>
+                  <button id="resource-import" class="action-button" type="button">Import selected resource</button>
+                </div>
+                <div id="resource-list" class="browser-list"></div>
+              </div>
+              <div class="browser-panel">
+                <div class="browser-head">
+                  <h4>Tools</h4>
+                  <button id="tool-import" class="action-button" type="button">Run tool and import output</button>
+                </div>
+                <div id="tool-list" class="browser-list"></div>
+                <label class="full-width">
+                  <span>Tool arguments (JSON)</span>
+                  <textarea id="tool-args" rows="6">{}</textarea>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="studio-section">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Controls</p>
+                <h3>Runtime and model roles</h3>
+              </div>
+            </div>
+            <div class="toolbar-grid">
+              <label class="toggle-row">
+                <span>
+                  <strong>Enable dual LLM analysis</strong>
+                  <small>Route MCP data through the quarantine model first.</small>
+                </span>
+                <input id="enable-dual" type="checkbox" checked />
+              </label>
+              <label>
+                <span>Run view</span>
+                <select id="mode">
+                  <option value="compare">Compare baseline vs dual</option>
+                  <option value="dual">Dual LLM only</option>
+                  <option value="baseline">Baseline only</option>
+                </select>
+              </label>
+              <label>
+                <span>Max quarantine rounds</span>
+                <input id="max-rounds" type="number" min="1" max="10" value="1" />
+              </label>
+            </div>
+            <div class="model-grid">
+              <section class="model-panel">
+                <div class="section-title-row">
+                  <div>
+                    <p class="eyebrow">LLM1</p>
+                    <h3>Quarantine role</h3>
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <label>
+                    <span>Label</span>
+                    <input id="q-label" type="text" />
+                  </label>
+                  <label>
+                    <span>Model</span>
+                    <input id="q-model" type="text" />
+                  </label>
+                  <label class="full-width">
+                    <span>Prompt</span>
+                    <textarea id="q-prompt" rows="7"></textarea>
+                  </label>
+                </div>
+              </section>
+
+              <section class="model-panel">
+                <div class="section-title-row">
+                  <div>
+                    <p class="eyebrow">LLM2</p>
+                    <h3>Privileged role</h3>
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <label>
+                    <span>Label</span>
+                    <input id="p-label" type="text" />
+                  </label>
+                  <label>
+                    <span>Model</span>
+                    <input id="p-model" type="text" />
+                  </label>
+                  <label class="full-width">
+                    <span>Prompt</span>
+                    <textarea id="p-prompt" rows="7"></textarea>
+                  </label>
+                  <label class="full-width">
+                    <span>Baseline prompt</span>
+                    <textarea id="baseline-prompt" rows="4"></textarea>
+                  </label>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="studio-section">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Incoming Content</p>
+                <h3>Message or connector payload under analysis</h3>
+              </div>
+              <button id="reset-inputs" class="action-button subtle" type="button">Reset from selected scenario</button>
+            </div>
+            <div class="field-grid input-grid">
+              <label>
+                <span>Source / sender</span>
+                <input id="email-from" type="text" />
+              </label>
+              <label>
+                <span>Subject / title</span>
+                <input id="email-subject" type="text" />
+              </label>
+              <label class="full-width">
+                <span>Business goal</span>
+                <textarea id="business-goal" rows="3"></textarea>
+              </label>
+              <label class="full-width">
+                <span>Primary content</span>
+                <textarea id="email-body" rows="8"></textarea>
+              </label>
+              <label>
+                <span>External source label</span>
+                <input id="external-label" type="text" value="Fetched URL / API endpoint" />
+              </label>
+              <label>
+                <span>External source reference</span>
+                <input id="external-ref" type="text" />
+              </label>
+              <label class="full-width">
+                <span>Structured source metadata or payload</span>
+                <textarea id="external-data" rows="7"></textarea>
+              </label>
+            </div>
+            <div class="action-row">
+              <button id="run-selected" class="run-button" type="button">Analyze current input</button>
+              <p id="results-status">Connect a server, import a resource or tool result, then run the dual-LLM pipeline.</p>
+            </div>
+          </section>
+
+          <section class="studio-section trace-section">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">Trace Output</p>
+                <h3>LLM1 findings, LLM2 handoff, and policy verdict</h3>
+              </div>
+            </div>
+            <div id="results-grid" class="results-grid"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script id="scenario-data" type="application/json">{{ scenarios|tojson }}</script>
+    <script id="runtime-config-data" type="application/json">{{ default_runtime_config|tojson }}</script>
+    <script id="gmail-status-data" type="application/json">{{ gmail_status|tojson }}</script>
+    <script id="mcp-connectors-data" type="application/json">{{ mcp_connectors|tojson }}</script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
