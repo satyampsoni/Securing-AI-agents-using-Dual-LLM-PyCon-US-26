@@ -334,15 +334,6 @@ The tests validate:
 - JSON/JSONL trace compatibility
 - scoring compatibility with the sibling `dual-llm-bench` package
 
-## References
-
-- [`dual-llm-bench` README](./dual-llm-bench/README.md)
-- [`dual-llm-bench` benchmarking methodology](./dual-llm-bench/docs/benchmarking-methodology.md)
-- [`dual-llm-bench` quarantine policy notes](./dual-llm-bench/docs/quarantine-policy.md)
-- AgentDojo benchmark framing: [OpenReview](https://openreview.net/forum?id=m1YYAQjO3w)
-- Benchmark framing for benign utility, utility under attack, and attack success rate: [OpenReview](https://openreview.net/forum?id=MqLJRCUBYG)
-- NIST discussion of stronger agent hijacking evaluation methodology: [NIST technical blog](https://www.nist.gov/news-events/news/2025/01/technical-blog-strengthening-ai-agent-hijacking-evaluations)
-
 ## Limitations
 
 - Replay mode is deterministic and useful for local development, but it is not a substitute for live-model evaluation.
