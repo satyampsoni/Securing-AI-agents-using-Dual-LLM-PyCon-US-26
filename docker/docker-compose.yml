@@ -1,0 +1,16 @@
+services:
+  dual-llm-security:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      RUN_MODE: replay
+    command:
+      - dual-llm-security
+      - run-dataset
+      - --dataset
+      - datasets
+      - --mode
+      - dual
+      - --output
+      - /tmp/dual-traces.jsonl
