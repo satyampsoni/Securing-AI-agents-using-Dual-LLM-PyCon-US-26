@@ -3,3 +3,8 @@
 *.egg-info/
 __pycache__/
 *.pyc
+.DS_Store
+.env
+
+# Benchmark subproject — kept out of this repo
+dual-llm-bench/
