@@ -21,6 +21,10 @@ This repo runs scenarios and emits traces.
 dual-llm-bench scores those traces.
 ```
 
+## PyCon US 2026 poster
+
+[View the PyCon US 2026 poster (PDF)](docs/pycon-us-2026-dual-llm-security-poster.pdf)
+
 ## Architecture
 
 ```mermaid
